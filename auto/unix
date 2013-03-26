@@ -1025,3 +1025,12 @@ ngx_feature_test='struct addrinfo *res;
                   if (getaddrinfo("localhost", NULL, NULL, &res) != 0) return 1;
                   freeaddrinfo(res)'
 . auto/feature
+
+ngx_feature="fsync()"
+ngx_feature_name="NGX_HAVE_FSYNC"
+ngx_feature_run=no
+ngx_feature_incs="#include <unistd.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="fsync(0)"
+. auto/feature

@@ -449,6 +449,7 @@ ngx_http_write_request_body(ngx_http_request_t *r)
 
         tf->file.fd = NGX_INVALID_FILE;
         tf->file.log = r->connection->log;
+        tf->file.fsync = clcf->fsync;
         tf->path = clcf->client_body_temp_path;
         tf->pool = r->pool;
         tf->warn = "a client request body is buffered to a temporary file";

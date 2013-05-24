@@ -370,6 +370,14 @@ size_t ngx_fs_bsize(u_char *name);
 #define ngx_set_stderr(fd)       dup2(fd, STDERR_FILENO)
 #define ngx_set_stderr_n         "dup2(STDERR_FILENO)"
 
+#if (NGX_HAVE_FSYNC)
+
+#define ngx_file_sync(fd)                                                    \
+    fsync(fd)
+
+#define ngx_file_sync_n          "fsync()"
+
+#endif
 
 #if (NGX_HAVE_FILE_AIO)
 

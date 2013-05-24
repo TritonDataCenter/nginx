@@ -122,6 +122,10 @@ ngx_http_header_t  ngx_http_headers_in[] = {
                  offsetof(ngx_http_headers_in_t, content_type),
                  ngx_http_process_header_line },
 
+    { ngx_string("Content-MD5"),
+                 offsetof(ngx_http_headers_in_t, content_md5),
+                 ngx_http_process_header_line },
+
     { ngx_string("Range"), offsetof(ngx_http_headers_in_t, range),
                  ngx_http_process_header_line },
 

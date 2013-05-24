@@ -109,6 +109,7 @@ ssize_t
 ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
 {
     ngx_int_t  rc;
+    ngx_chain_t *cl;
 
     if (tf->file.fd == NGX_INVALID_FILE) {
         rc = ngx_create_temp_file(&tf->file, tf->path, tf->pool,
@@ -121,6 +122,13 @@ ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
         if (tf->log_level) {
             ngx_log_error(tf->log_level, tf->file.log, 0, "%s %V",
                           tf->warn, &tf->file.name);
+        }
+    }
+
+    if (tf->md5) {
+        for (cl = chain; cl != NULL; cl = cl->next) {
+            ngx_md5_update(&tf->md5ctx, cl->buf->pos,
+                           cl->buf->last - cl->buf->pos);
         }
     }
 

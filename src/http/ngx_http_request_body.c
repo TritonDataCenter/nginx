@@ -449,16 +449,20 @@ ngx_http_write_request_body(ngx_http_request_t *r)
 
         tf->file.fd = NGX_INVALID_FILE;
         tf->file.log = r->connection->log;
-        tf->file.fsync = clcf->fsync;
         tf->path = clcf->client_body_temp_path;
         tf->pool = r->pool;
         tf->warn = "a client request body is buffered to a temporary file";
         tf->log_level = r->request_body_file_log_level;
         tf->persistent = r->request_body_in_persistent_file;
         tf->clean = r->request_body_in_clean_file;
+        tf->md5 = r->request_body_md5;
 
         if (r->request_body_file_group_access) {
             tf->access = 0660;
+        }
+
+        if (tf->md5) {
+            ngx_md5_init(&tf->md5ctx);
         }
 
         rb->temp_file = tf;

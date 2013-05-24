@@ -11,6 +11,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_md5.h>
 
 
 struct ngx_file_s {
@@ -36,7 +37,6 @@ struct ngx_file_s {
 
     unsigned                   valid_info:1;
     unsigned                   directio:1;
-    unsigned                   fsync:1;
 };
 
 
@@ -72,6 +72,7 @@ typedef struct {
 typedef struct {
     ngx_file_t                 file;
     off_t                      offset;
+    ngx_md5_t                  md5ctx;
     ngx_path_t                *path;
     ngx_pool_t                *pool;
     char                      *warn;
@@ -82,6 +83,7 @@ typedef struct {
     unsigned                   persistent:1;
     unsigned                   clean:1;
     unsigned                   thread_write:1;
+    unsigned                   md5:1;
 } ngx_temp_file_t;
 
 

@@ -23,6 +23,11 @@ typedef struct {
     ngx_uint_t  access;
     ngx_uint_t  min_delete_depth;
     ngx_flag_t  create_full_put_path;
+#if (NGX_HAVE_FSYNC)
+    ngx_flag_t  fsync;
+#endif
+    ngx_flag_t  md5_header;
+    ngx_uint_t  content_md5_fail_status;
 } ngx_http_dav_loc_conf_t;
 
 
@@ -104,6 +109,29 @@ static ngx_command_t  ngx_http_dav_commands[] = {
       offsetof(ngx_http_dav_loc_conf_t, access),
       NULL },
 
+#if (NGX_HAVE_FSYNC)
+    { ngx_string("fsync"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_dav_loc_conf_t, fsync),
+      NULL },
+#endif
+
+    { ngx_string("put_always_respond_md5"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_dav_loc_conf_t, md5_header),
+      NULL },
+
+    { ngx_string("content_md5_fail_status"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_dav_loc_conf_t, content_md5_fail_status),
+      NULL },
+
       ngx_null_command
 };
 
@@ -173,6 +201,12 @@ ngx_http_dav_handler(ngx_http_request_t *r)
         r->request_body_file_group_access = 1;
         r->request_body_file_log_level = 0;
 
+        if (dlcf->md5_header ||
+            (dlcf->content_md5_fail_status != 0 &&
+             r->headers_in.content_md5 != NULL)) {
+            r->request_body_md5 = 1;
+        }
+
         rc = ngx_http_read_client_request_body(r, ngx_http_dav_put_handler);
 
         if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
@@ -212,6 +246,10 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     ngx_file_info_t           fi;
     ngx_ext_rename_file_t     ext;
     ngx_http_dav_loc_conf_t  *dlcf;
+    ngx_str_t                 d_computed_hash;
+    ngx_str_t                 e_computed_hash;
+    ngx_table_elt_t          *h;
+    ngx_uint_t                failed_md5 = 0;
 
     if (r->request_body == NULL) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -278,6 +316,102 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
             ext.fd = r->request_body->temp_file->file.fd;
         }
     }
+
+    /*
+     * If we accumulated MD5 hash metadata, finish computing it here.
+     */
+    if (r->request_body_md5) {
+        d_computed_hash.data = ngx_palloc(r->pool, 16);
+        if (d_computed_hash.data == NULL) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        ngx_md5_final(d_computed_hash.data,
+                      &r->request_body->temp_file->md5ctx);
+        d_computed_hash.len = 16;
+    }
+
+    /*
+     * The Content-MD5 header's value is base64 encoded.  We need to decode it,
+     * then compare it with the computed hash value.  If they do not match, we
+     * will fail the request with the configured status code.
+     *
+     * We also handle various problems with the request header here.  This is
+     * unfortunate, since we could have checked this before actually receiving
+     * the file's contents if the client sent expect: 100-continue.  As a
+     * future optimisation, some of this checking could be moved.
+     */
+    if (r->request_body_md5 && r->headers_in.content_md5 != NULL) {
+        const ngx_str_t *e_client_hash = &r->headers_in.content_md5->value;
+        ngx_str_t d_client_hash;
+
+        if (e_client_hash->len != ngx_base64_encoded_length(16)) {
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return;
+        }
+
+        d_client_hash.data = ngx_palloc(r->pool, 16);
+        if (d_client_hash.data == NULL) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        if (ngx_decode_base64(&d_client_hash,
+                              (ngx_str_t *)e_client_hash) != NGX_OK) {
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return;
+        }
+
+        if (ngx_memcmp(d_client_hash.data, d_computed_hash.data, 16) != 0)
+            ++failed_md5;
+    }
+
+    /*
+     * If we failed to match the client's MD5 hash, or if we've been configured
+     * to always append the computed hash, encode the computed hash and attach
+     * it into the header chain now.
+     */
+    if (failed_md5 || dlcf->md5_header) {
+        e_computed_hash.data = ngx_palloc(r->pool,
+            ngx_base64_encoded_length(16) + 1);
+        if (e_computed_hash.data == NULL) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        h = ngx_list_push(&r->headers_out.headers);
+        if (h == NULL) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        h->hash = 1;
+        ngx_str_set(&h->key, "X-Joyent-Computed-Content-MD5");
+        ngx_encode_base64(&e_computed_hash, &d_computed_hash);
+        e_computed_hash.data[e_computed_hash.len] = '\0';
+        h->value = e_computed_hash;
+    }
+
+    if (failed_md5) {
+        ngx_http_finalize_request(r, dlcf->content_md5_fail_status);
+        return;
+    }
+
+    /*
+     * We want to do this last, so that the OS will have maximum opportunity
+     * to schedule and complete this I/O while we were doing other things.
+     */
+#if (NGX_HAVE_FSYNC)
+    if (dlcf->fsync) {
+        if (ngx_file_sync(r->request_body->temp_file->file.fd) != 0) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                ngx_file_sync_n " \"%s\"", temp->data);
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+#endif
 
     if (ngx_ext_rename_file(temp, &path, &ext) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -1122,6 +1256,11 @@ ngx_http_dav_create_loc_conf(ngx_conf_t *cf)
     conf->min_delete_depth = NGX_CONF_UNSET_UINT;
     conf->access = NGX_CONF_UNSET_UINT;
     conf->create_full_put_path = NGX_CONF_UNSET;
+#if (NGX_HAVE_FSYNC)
+    conf->fsync = NGX_CONF_UNSET;
+#endif
+    conf->content_md5_fail_status = NGX_CONF_UNSET_UINT;
+    conf->md5_header = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -1143,6 +1282,16 @@ ngx_http_dav_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->create_full_put_path,
                          prev->create_full_put_path, 0);
+
+#if (NGX_HAVE_FSYNC)
+    ngx_conf_merge_value(conf->fsync, prev->fsync, 0);
+#endif
+
+    ngx_conf_merge_uint_value(conf->content_md5_fail_status,
+                              prev->content_md5_fail_status, 400);
+
+    ngx_conf_merge_value(conf->md5_header,
+                         prev->md5_header, 0);
 
     return NGX_CONF_OK;
 }

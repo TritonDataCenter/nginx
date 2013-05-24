@@ -189,6 +189,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("content_type"), NULL, ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_in.content_type), 0, 0 },
 
+    { ngx_string("content_md5"), NULL, ngx_http_variable_header,
+      offsetof(ngx_http_request_t, headers_in.content_md5), 0, 0 },
+
     { ngx_string("host"), NULL, ngx_http_variable_host, 0, 0, 0 },
 
     { ngx_string("binary_remote_addr"), NULL,

@@ -330,12 +330,29 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
         ngx_md5_final(d_computed_hash.data,
                       &r->request_body->temp_file->md5ctx);
         d_computed_hash.len = 16;
+
+        e_computed_hash.data = ngx_palloc(r->pool,
+            ngx_base64_encoded_length(16) + 1);
+        if (e_computed_hash.data == NULL) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        ngx_encode_base64(&e_computed_hash, &d_computed_hash);
+        if (e_computed_hash.len != ngx_base64_encoded_length(16)) {
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return;
+        }
+        e_computed_hash.data[e_computed_hash.len] = '\0';
     }
 
     /*
-     * The Content-MD5 header's value is base64 encoded.  We need to decode it,
-     * then compare it with the computed hash value.  If they do not match, we
-     * will fail the request with the configured status code.
+     * The Content-MD5 header's value is base64 encoded; our computed hash
+     * is not.  Encode it, then compare it with the header value.  If they
+     * do not match, we will fail the request with the configured status code.
+     * We compare the encoded rather than decoded values because is is possible
+     * for multiple encodings to match the same decoded value.  We rely on
+     * all base64 encoders to encode these hashes in the same way.
      *
      * We also handle various problems with the request header here.  This is
      * unfortunate, since we could have checked this before actually receiving
@@ -363,7 +380,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
             return;
         }
 
-        if (ngx_memcmp(d_client_hash.data, d_computed_hash.data, 16) != 0)
+        if (ngx_strcmp(e_client_hash->data, e_computed_hash.data) != 0)
             ++failed_md5;
     }
 
@@ -373,13 +390,6 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
      * it into the header chain now.
      */
     if (failed_md5 || dlcf->md5_header) {
-        e_computed_hash.data = ngx_palloc(r->pool,
-            ngx_base64_encoded_length(16) + 1);
-        if (e_computed_hash.data == NULL) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
-        }
-
         h = ngx_list_push(&r->headers_out.headers);
         if (h == NULL) {
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -388,8 +398,6 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
         h->hash = 1;
         ngx_str_set(&h->key, "X-Joyent-Computed-Content-MD5");
-        ngx_encode_base64(&e_computed_hash, &d_computed_hash);
-        e_computed_hash.data[e_computed_hash.len] = '\0';
         h->value = e_computed_hash;
     }
 

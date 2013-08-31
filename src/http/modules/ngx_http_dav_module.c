@@ -8,7 +8,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-
+#include <alloca.h>
 
 #define NGX_HTTP_DAV_OFF             2
 
@@ -166,6 +166,33 @@ ngx_module_t  ngx_http_dav_module = {
     NGX_MODULE_V1_PADDING
 };
 
+#if (NGX_HAVE_FSYNC)
+static ngx_int_t
+ngx_http_dav_rename_sync(const char *src)
+{
+    char *parent;
+    const char *p = strrchr(src, '/');
+    int fd;
+    ngx_int_t rc;
+
+    if (p == NULL) {
+        parent = ".";
+    } else {
+        parent = alloca(p - src + 1);
+        (void) strncpy(parent, src, p - src);
+        parent[p - src] = '\0';
+    }
+
+    fd = open64(parent, O_RDONLY|O_NOCTTY);
+    if (fd < 0)
+        return NGX_ERROR;
+
+    rc = (ngx_file_sync(fd) == 0) ? NGX_OK : NGX_ERROR;
+    (void) close(fd);
+
+    return rc;
+}
+#endif
 
 static ngx_int_t
 ngx_http_dav_handler(ngx_http_request_t *r)
@@ -425,6 +452,15 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
+
+#if (NGX_HAVE_FSYNC)
+    if (dlcf->fsync) {
+        if (ngx_http_dav_rename_sync((const char *)temp->data) != NGX_OK) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+#endif
 
     if (status == NGX_HTTP_CREATED) {
         if (ngx_http_dav_location(r, path.data) != NGX_OK) {
@@ -927,6 +963,14 @@ overwrite_done:
 
         if (r->method == NGX_HTTP_MOVE) {
             if (ngx_rename_file(path.data, copy.path.data) != NGX_FILE_ERROR) {
+#if (NGX_HAVE_FSYNC)
+                dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
+                if (dlcf->fsync &&
+                    ngx_http_dav_rename_sync((const char *)path.data) !=
+                    NGX_OK) {
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+#endif
                 return NGX_HTTP_CREATED;
             }
         }
@@ -977,6 +1021,13 @@ overwrite_done:
             ext.log = r->connection->log;
 
             if (ngx_ext_rename_file(&path, &copy.path, &ext) == NGX_OK) {
+#if (NGX_HAVE_FSYNC)
+                if (dlcf->fsync &&
+                    ngx_http_dav_rename_sync((const char *)path.data) !=
+                    NGX_OK) {
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+#endif
                 return NGX_HTTP_NO_CONTENT;
             }
 

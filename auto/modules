@@ -121,6 +121,7 @@ if [ $HTTP = YES ]; then
     #     ngx_http_static_module
     #     ngx_http_gzip_static_module
     #     ngx_http_dav_module
+    #     ngx_http_mpu_commit_module
     #     ngx_http_autoindex_module
     #     ngx_http_index_module
     #     ngx_http_random_index_module
@@ -157,6 +158,7 @@ if [ $HTTP = YES ]; then
     ngx_module_order="ngx_http_static_module \
                       ngx_http_gzip_static_module \
                       ngx_http_dav_module \
+                      ngx_http_mpu_commit_module \
                       ngx_http_autoindex_module \
                       ngx_http_index_module \
                       ngx_http_random_index_module \
@@ -471,6 +473,19 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs=src/http/modules/ngx_http_dav_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_DAV
+
+        . auto/module
+    fi
+
+    if [ $HTTP_MPU_COMMIT = YES ]; then
+        have=NGX_HTTP_MPU_COMMIT . auto/have
+
+        ngx_module_name=$HTTP_MPU_COMMIT_MODULE
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=$HTTP_MPU_COMMIT_SRCS
+        ngx_module_libs=-lnvpair
+        ngx_module_link=$HTTP_MPU_COMMIT
 
         . auto/module
     fi

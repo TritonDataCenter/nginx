@@ -468,6 +468,16 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         ngx_time_update();
     }
 
+    /*
+     * There's a long standing condition with event ports that port_getn() may
+     * return ETIME even when events are available. This would happen if we have
+     * specified a timeout to port_getn() without reaching the number of
+     * requested events.
+     */
+    if (n == -1 && err == ETIME && events > 0) {
+	    n = 0;
+    }
+
     if (n == -1) {
         if (err == ETIME) {
             if (timer != NGX_TIMER_INFINITE) {

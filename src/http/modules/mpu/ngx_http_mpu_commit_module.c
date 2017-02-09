@@ -175,7 +175,6 @@
 #include <libgen.h>
 #include <stdarg.h>
 #include <sys/debug.h>
-#include <md5.h>
 #include <atomic.h>
 
 #include "deps/json-nvlist.h"
@@ -194,6 +193,17 @@
 
 #ifndef	MIN
 #define	MIN(a, b)	((a) < (b) ? (a) : (b))
+#endif
+
+/*
+ * This module attempts to be agnostic to the md5 implementation in use;
+ * however, it does expect that the headers define MD5_DIGEST_LENGTH. This is
+ * currently defined by both the system headers on illumos and OpenSSL. While we
+ * could define it ourselves, if it's missing, that's a sign that we should
+ * figure out what md5 implementation we're actually using.
+ */
+#ifndef	MD5_DIGEST_LENGTH
+#error "md5 implementation headers missing common MD5_DIGEST_LENGTH macro"
 #endif
 
 /*
@@ -241,7 +251,7 @@ typedef struct {
 	ngx_int_t		mpcr_status;
 	ngx_buf_t		mpcr_ngx_buf;
 	ngx_md5_t		mpcr_md5;
-	char			mpcr_md5_buf[MD5_DIGEST_LENGTH];
+	unsigned char		mpcr_md5_buf[MD5_DIGEST_LENGTH];
 	char			mpcr_md5_b64[MPU_MD5_B64_LEN];
 	char			mpcr_error[MPU_ERR_BUF_LEN];
 } mpu_request_t;

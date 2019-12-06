@@ -22,7 +22,7 @@
  */
 
 /*
- * Copyright 2017 Joyent, Inc.
+ * Copyright 2019 Joyent, Inc.
  */
 
 /*
@@ -485,7 +485,7 @@ mpu_readin_request(mpu_request_t *mpcr, nvlist_t **nvl)
 	buf[0] = '\0';
 	off = 0;
 	do {
-		size_t toread = MIN(st.st_size, mpcr->mpcr_buflen);
+		size_t toread = MIN((size_t)st.st_size, (size_t)mpcr->mpcr_buflen);
 
 		/*
 		 * Use pread(2), we don't know where nginx has left off reading

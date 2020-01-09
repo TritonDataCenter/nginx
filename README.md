@@ -10,7 +10,6 @@ features:
 
 * Return the calculated md5 checksums from the streamed request bodies
 * Ensure that the dav module's renames are properly atomic (fsync)
-* Add support for the multipart upload commit functionality
 
 ## Repository Management
 
@@ -55,16 +54,3 @@ the following steps:
 * Create a new tag `joyent/v1.12.3j1`.
 * Update the [manta-mako](https://github.com/joyent/manta-mako)
   submodule to point to the new tag.
-
-## MPU Module Dependencies
-
-The MPU module contains several dependencies which can be found in the
-directory `rc/http/modules/mpu/deps`. Changes should not be made locally
-(beyond adjusting header include paths), but rather they should be
-applied to the upstream repositories.  These modules all come from the
-following external sources:
-
-* The custr files comes from illumos
-* The nvlist-json files comes from illumos
-* The jsonemitter files come from Joyent, but do not have a well defined
-  home

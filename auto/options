@@ -68,7 +68,6 @@ HTTP_IMAGE_FILTER=NO
 HTTP_SUB=NO
 HTTP_ADDITION=NO
 HTTP_DAV=NO
-HTTP_MPU_COMMIT=NO
 HTTP_ACCESS=YES
 HTTP_AUTH_BASIC=YES
 HTTP_AUTH_REQUEST=NO
@@ -232,7 +231,6 @@ do
                                          HTTP_GEOIP=DYNAMIC         ;;
         --with-http_sub_module)          HTTP_SUB=YES               ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
-        --with-http_mpu_commit)          HTTP_MPU_COMMIT=YES        ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;
         --with-http_mp4_module)          HTTP_MP4=YES               ;;
         --with-http_gunzip_module)       HTTP_GUNZIP=YES            ;;

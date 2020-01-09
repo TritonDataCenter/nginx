@@ -249,11 +249,5 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
 NGX_WIN32_ICONS="src/os/win32/nginx.ico"
 NGX_WIN32_RC="src/os/win32/nginx.rc"
 
-HTTP_MPU_COMMIT_MODULE=ngx_http_mpu_commit_module
-HTTP_MPU_COMMIT_SRCS="src/http/modules/mpu/ngx_http_mpu_commit_module.c \
-	src/http/modules/mpu/deps/custr.c \
-	src/http/modules/mpu/deps/jsonemitter.c \
-	src/http/modules/mpu/deps/json-nvlist.c"
-
 
 HTTP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c

@@ -22,7 +22,7 @@
  */
 
 /*
- * Copyright 2019 Joyent, Inc.
+ * Copyright 2020 Joyent, Inc.
  */
 
 /*
@@ -196,15 +196,10 @@
 #endif
 
 /*
- * This module attempts to be agnostic to the md5 implementation in use;
- * however, it does expect that the headers define MD5_DIGEST_LENGTH. This is
- * currently defined by both the system headers on illumos and OpenSSL. While we
- * could define it ourselves, if it's missing, that's a sign that we should
- * figure out what md5 implementation we're actually using.
+ * Nginx uses an internal md5 implementation (see src/core/ngx_md5.c) but
+ * there's no const defined for the digest length, so set that now.
  */
-#ifndef	MD5_DIGEST_LENGTH
-#error "md5 implementation headers missing common MD5_DIGEST_LENGTH macro"
-#endif
+#define	MD5_DIGEST_LENGTH	16
 
 /*
  * We read up to 512k into a buffer for the commit POST request body. Anything

@@ -422,7 +422,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
      * We want to do this last, so that the OS will have maximum opportunity
      * to schedule and complete this I/O while we were doing other things.
      */
-#if (NGX_HAVE_FSYNC)
+#if (NGX_HAVE_FSYNC && !NGX_NO_WRITE)
     if (dlcf->fsync) {
         if (ngx_file_sync(r->request_body->temp_file->file.fd) != 0) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
@@ -433,12 +433,14 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     }
 #endif
 
+#if (!NGX_NO_WRITE)
     if (ngx_ext_rename_file(temp, &path, &ext) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
+#endif
 
-#if (NGX_HAVE_FSYNC)
+#if (NGX_HAVE_FSYNC && !NGX_NO_WRITE)
     if (dlcf->fsync) {
         if (ngx_http_dav_rename_sync((const char *)temp->data) != NGX_OK) {
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);

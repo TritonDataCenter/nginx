@@ -200,7 +200,9 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 
     written = 0;
 
-#if (NGX_HAVE_PWRITE)
+#if (NGX_NO_WRITE)
+    return size;
+#elif (NGX_HAVE_PWRITE)
 
     for ( ;; ) {
         n = pwrite(file->fd, buf + written, size, offset);

@@ -925,3 +925,13 @@ ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="fsync(0)"
 . auto/feature
+
+ngx_feature="no_write()"
+ngx_feature_name="NGX_NO_WRITE"
+ngx_feature_run=no
+ngx_feature_incs=
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="return 0"
+. auto/feature
+

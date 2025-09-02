@@ -1039,6 +1039,7 @@ mpu_v2_nvl_process(mpu_v2_request_t *mpcr, nvlist_t *nvl)
 {
 	int ret;
 	int64_t version, nbytes;
+	ngx_uint_t nparts;
 	char *owner, *bucket_id, *object_id, *object_hash, *upload_id, *req_md5;
 	nvlist_t *parts_nvl;
 	mpu_v2_part_t *parts;

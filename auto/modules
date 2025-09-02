@@ -127,6 +127,7 @@ fi
 #     ngx_http_gzip_static_module
 #     ngx_http_dav_module
 #     ngx_http_mpu_commit_module
+#     ngx_http_mpu_v2_commit_module
 #     ngx_http_autoindex_module
 #     ngx_http_index_module
 #     ngx_http_random_index_module
@@ -164,6 +165,7 @@ ngx_module_order="ngx_http_static_module \
                   ngx_http_gzip_static_module \
                   ngx_http_dav_module \
                   ngx_http_mpu_commit_module \
+                  ngx_http_mpu_v2_commit_module \
                   ngx_http_autoindex_module \
                   ngx_http_index_module \
                   ngx_http_random_index_module \
@@ -483,6 +485,13 @@ if [ $HTTP_MPU_COMMIT = YES ]; then
     have=NGX_HTTP_MPU_COMMIT . auto/have
     HTTP_MODULES="$HTTP_MODULES $HTTP_MPU_COMMIT_MODULE"
     HTTP_SRCS="$HTTP_SRCS $HTTP_MPU_COMMIT_SRCS"
+    CORE_LIBS="$CORE_LIBS -lnvpair"
+fi
+
+if [ $HTTP_MPU_V2_COMMIT = YES ]; then
+    have=NGX_HTTP_MPU_V2_COMMIT . auto/have
+    HTTP_MODULES="$HTTP_MODULES $HTTP_MPU_V2_COMMIT_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_MPU_V2_COMMIT_SRCS"
     CORE_LIBS="$CORE_LIBS -lnvpair"
 fi
 

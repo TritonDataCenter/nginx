@@ -69,6 +69,7 @@ HTTP_SUB=NO
 HTTP_ADDITION=NO
 HTTP_DAV=NO
 HTTP_MPU_COMMIT=NO
+HTTP_MPU_V2_COMMIT=NO
 HTTP_ACCESS=YES
 HTTP_AUTH_BASIC=YES
 HTTP_AUTH_REQUEST=NO
@@ -233,6 +234,7 @@ do
         --with-http_sub_module)          HTTP_SUB=YES               ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
         --with-http_mpu_commit)          HTTP_MPU_COMMIT=YES        ;;
+        --with-http_mpu_v2_commit)       HTTP_MPU_V2_COMMIT=YES     ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;
         --with-http_mp4_module)          HTTP_MP4=YES               ;;
         --with-http_gunzip_module)       HTTP_GUNZIP=YES            ;;
@@ -411,6 +413,8 @@ cat << END
   --with-http_geoip_module=dynamic   enable dynamic ngx_http_geoip_module
   --with-http_sub_module             enable ngx_http_sub_module
   --with-http_dav_module             enable ngx_http_dav_module
+  --with-http_mpu_commit             enable ngx_http_mpu_commit_module
+  --with-http_mpu_v2_commit          enable ngx_http_mpu_v2_commit_module
   --with-http_flv_module             enable ngx_http_flv_module
   --with-http_mp4_module             enable ngx_http_mp4_module
   --with-http_gunzip_module          enable ngx_http_gunzip_module

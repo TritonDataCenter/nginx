@@ -941,16 +941,18 @@ static boolean_t
 mpu_v2_parse_parts(mpu_v2_request_t *mpcr, nvlist_t *parts_nvl, 
     mpu_v2_part_t **parts_out, ngx_uint_t *nparts_out)
 {
+	uint32_t nparts_raw;
 	ngx_uint_t nparts, i;
 	mpu_v2_part_t *parts;
 	ngx_http_request_t *r = mpcr->mpcr_http;
 
 	if (nvlist_lookup_boolean(parts_nvl, ".__json_array") != 0 ||
-	    nvlist_lookup_uint32(parts_nvl, "length", &nparts) != 0) {
+	    nvlist_lookup_uint32(parts_nvl, "length", &nparts_raw) != 0) {
 		mpu_v2_set_error(mpcr, NGX_HTTP_BAD_REQUEST, 0,
 		    "mpu v2 commit JSON parts not parsed to a valid array");
 		return (B_FALSE);
 	}
+	nparts = (ngx_uint_t)nparts_raw;
 
 	if (nparts == 0 || nparts > MPU_V2_MAX_PARTS) {
 		mpu_v2_set_error(mpcr, NGX_HTTP_BAD_REQUEST, 0,
@@ -971,7 +973,7 @@ mpu_v2_parse_parts(mpu_v2_request_t *mpcr, nvlist_t *parts_nvl,
 		int64_t part_number, size;
 		char *path, *etag;
 
-		(void) snprintf(key, sizeof (key), "%d", i);
+		(void) snprintf(key, sizeof (key), "%lu", (unsigned long)i);
 		if (nvlist_lookup_nvlist(parts_nvl, key, &part_nvl) != 0) {
 			mpu_v2_set_error(mpcr, NGX_HTTP_BAD_REQUEST, 0,
 			    "part %d is not a valid object", i);
@@ -1007,8 +1009,14 @@ mpu_v2_parse_parts(mpu_v2_request_t *mpcr, nvlist_t *parts_nvl,
 		}
 
 		parts[i].part_number = (ngx_uint_t)part_number;
-		parts[i].path = ngx_pstrdup(r->pool, path);
-		parts[i].etag = ngx_pstrdup(r->pool, etag);
+		parts[i].path = (char *)ngx_palloc(r->pool, strlen(path) + 1);
+		if (parts[i].path != NULL) {
+			ngx_cpystrn((u_char *)parts[i].path, (u_char *)path, strlen(path) + 1);
+		}
+		parts[i].etag = (char *)ngx_palloc(r->pool, strlen(etag) + 1);
+		if (parts[i].etag != NULL) {
+			ngx_cpystrn((u_char *)parts[i].etag, (u_char *)etag, strlen(etag) + 1);
+		}
 		parts[i].size = size;
 
 		if (parts[i].path == NULL || parts[i].etag == NULL) {
@@ -1030,7 +1038,6 @@ static boolean_t
 mpu_v2_nvl_process(mpu_v2_request_t *mpcr, nvlist_t *nvl)
 {
 	int ret;
-	ngx_uint_t nparts;
 	int64_t version, nbytes;
 	char *owner, *bucket_id, *object_id, *object_hash, *upload_id, *req_md5;
 	nvlist_t *parts_nvl;

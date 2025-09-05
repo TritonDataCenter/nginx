@@ -755,6 +755,23 @@ mpu_v2_rename(mpu_v2_request_t *mpcr, ngx_file_t *infile)
 		return (B_FALSE);
 	}
 
+	/*
+	 * Create parent directories if they don't exist before attempting rename.
+	 * This handles the case where the 2-character prefix directory
+	 * (which is the first 2 bytes of the object id)
+	 * doesn't exist in new environments.
+	 */
+	char outdir_copy[PATH_MAX];
+	(void) snprintf(outdir_copy, sizeof(outdir_copy), "%s", outfile);
+	char *parent_dir = dirname(outdir_copy);
+	
+	if (ngx_create_full_path((u_char *)parent_dir, 0755) != NGX_OK) {
+		ngx_log_error(NGX_LOG_WARN, r->connection->log, ngx_errno,
+		    "failed to create parent directory %s for v2 commit, "
+		    "continuing with rename attempt", parent_dir);
+		/* Continue with rename attempt even if directory creation fails */
+	}
+
 	if (rename((char *)infile->name.data, outfile) != 0) {
 		VERIFY3S(errno, !=, EFAULT);
 		mpu_v2_set_error(mpcr, NGX_HTTP_INTERNAL_SERVER_ERROR, errno,

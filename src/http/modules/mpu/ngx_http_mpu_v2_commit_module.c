@@ -761,11 +761,16 @@ mpu_v2_rename(mpu_v2_request_t *mpcr, ngx_file_t *infile)
 	 * (which is the first 2 bytes of the object id)
 	 * doesn't exist in new environments.
 	 */
-	char outdir_copy[PATH_MAX];
-	(void) snprintf(outdir_copy, sizeof(outdir_copy), "%s", outfile);
-	char *parent_dir = dirname(outdir_copy);
+	char parent_dir_with_slash[PATH_MAX];
+	(void) snprintf(parent_dir_with_slash, sizeof(parent_dir_with_slash),
+	    "%s", outfile);
+	char *parent_dir = dirname(parent_dir_with_slash);
 	
-	if (ngx_create_full_path((u_char *)parent_dir, 0755) != NGX_OK) {
+	/* ngx_create_full_path requires trailing slash to work properly */
+	(void) snprintf(parent_dir_with_slash, sizeof(parent_dir_with_slash),
+	    "%s/", parent_dir);
+	
+	if (ngx_create_full_path((u_char *)parent_dir_with_slash, 0755) != NGX_OK) {
 		ngx_log_error(NGX_LOG_WARN, r->connection->log, ngx_errno,
 		    "failed to create parent directory %s for v2 commit, "
 		    "continuing with rename attempt", parent_dir);
